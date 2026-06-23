@@ -90,10 +90,14 @@ const activeMeta = computed(() => {
 })
 
 function getCellValue(item, column) {
-    if (column.formatter) {
-        return column.formatter(item[column.key], item)
+    const rawValue = item[column.key]
+    
+    // PRIORITAS: gunakan formatter kalau ada
+    if (column.formatter && typeof column.formatter === 'function') {
+        return column.formatter(rawValue, item)
     }
-    return item[column.key]
+    
+    return rawValue
 }
 
 function getCellClass(column) {

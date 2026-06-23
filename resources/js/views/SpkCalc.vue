@@ -51,7 +51,7 @@ const sawColumns = [
     { 
         key: 'rating', 
         label: 'Rating',
-        formatter: (val) => val?.toFixed(2) || 0
+        formatter: (val) => val?.toFixed(1) || 0
     },
 ]
 
@@ -246,7 +246,7 @@ onMounted(() => {
                     </template>
                     <template #cell-rating="{ value }">
                         <div class="flex items-center gap-1">
-                            <span>{{ value }}</span>
+                            <span>{{ Number(value).toFixed(1) }}</span>
                             <span class="text-yellow-500">★</span>
                         </div>
                     </template>
