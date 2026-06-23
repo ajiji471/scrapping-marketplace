@@ -1,4 +1,76 @@
 <!-- resources/js/views/SpkCalc.vue -->
+<script setup>
+import { ref, reactive, computed, onMounted } from 'vue'
+import { spkApi, productApi } from '@api/client'
+import { cn } from '@lib/utils'
+import Card from '@components/ui/card/Card.vue'
+import CardHeader from '@components/ui/card/CardHeader.vue'
+import CardTitle from '@components/ui/card/CardTitle.vue'
+import CardContent from '@components/ui/card/CardContent.vue'
+import Button from '@components/ui/button/Button.vue'
+import Badge from '@components/ui/Badge.vue'
+import Select from '@components/ui/Select.vue'
+import Slider from '@components/ui/Slider.vue'
+import Table from '@components/ui/Table.vue'
+
+const method = ref('saw')
+const categoryFilter = ref('')
+const categories = ref([])
+const criteria = ref([])
+const weights = reactive({})
+const results = ref({ saw: null, wp: null })
+
+const totalWeight = computed(() => 
+    Object.values(weights).reduce((a, b) => a + (b || 0), 0)
+)
+
+async function loadCriteria() {
+    try {
+        const res = await spkApi.getCriteria()
+        criteria.value = res.criteria
+        res.criteria.forEach(c => {
+            weights[c.key] = c.default_weight
+        })
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+async function loadCategories() {
+    try {
+        const res = await productApi.getAll({ per_page: 1000 })
+        categories.value = [...new Set((res.data || []).map(p => p.category))].filter(Boolean)
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+async function calculate() {
+    if (Math.abs(totalWeight.value - 1) > 0.01) {
+        alert('Total bobot harus = 1.00')
+        return
+    }
+
+    try {
+        const payload = {
+            method: method.value,
+            weights: { ...weights },
+        }
+        if (categoryFilter.value) payload.category = categoryFilter.value
+        
+        const res = await spkApi.calculate(payload)
+        results.value = res.data
+    } catch (e) {
+        alert('Gagal menghitung SPK: ' + e.message)
+    }
+}
+
+onMounted(() => {
+    loadCriteria()
+    loadCategories()
+})
+</script>
+
 <template>
     <div class="space-y-6">
         <!-- Configuration -->
@@ -115,75 +187,3 @@
         </Card>
     </div>
 </template>
-
-<script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { spkApi, productApi } from '@api/client'
-import { cn } from '@lib/utils'
-import Card from '@components/ui/Card.vue'
-import CardHeader from '@components/ui/CardHeader.vue'
-import CardTitle from '@components/ui/CardTitle.vue'
-import CardContent from '@components/ui/CardContent.vue'
-import Button from '@components/ui/Button.vue'
-import Badge from '@components/ui/Badge.vue'
-import Select from '@components/ui/Select.vue'
-import Slider from '@components/ui/Slider.vue'
-import Table from '@components/ui/Table.vue'
-
-const method = ref('saw')
-const categoryFilter = ref('')
-const categories = ref([])
-const criteria = ref([])
-const weights = reactive({})
-const results = ref({ saw: null, wp: null })
-
-const totalWeight = computed(() => 
-    Object.values(weights).reduce((a, b) => a + (b || 0), 0)
-)
-
-async function loadCriteria() {
-    try {
-        const res = await spkApi.getCriteria()
-        criteria.value = res.criteria
-        res.criteria.forEach(c => {
-            weights[c.key] = c.default_weight
-        })
-    } catch (e) {
-        console.error(e)
-    }
-}
-
-async function loadCategories() {
-    try {
-        const res = await productApi.getAll({ per_page: 1000 })
-        categories.value = [...new Set((res.data || []).map(p => p.category))].filter(Boolean)
-    } catch (e) {
-        console.error(e)
-    }
-}
-
-async function calculate() {
-    if (Math.abs(totalWeight.value - 1) > 0.01) {
-        alert('Total bobot harus = 1.00')
-        return
-    }
-
-    try {
-        const payload = {
-            method: method.value,
-            weights: { ...weights },
-        }
-        if (categoryFilter.value) payload.category = categoryFilter.value
-        
-        const res = await spkApi.calculate(payload)
-        results.value = res.data
-    } catch (e) {
-        alert('Gagal menghitung SPK: ' + e.message)
-    }
-}
-
-onMounted(() => {
-    loadCriteria()
-    loadCategories()
-})
-</script>

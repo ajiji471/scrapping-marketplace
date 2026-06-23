@@ -1,21 +1,147 @@
 <!-- resources/js/views/Products.vue -->
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { productApi } from '@api/client'
+import Card from '@components/ui/card/Card.vue'
+import CardContent from '@components/ui/card/CardContent.vue'
+import Button from '@components/ui/button/Button.vue'
+import Input from '@components/ui/Input.vue'
+import Badge from '@components/ui/Badge.vue'
+import Table from '@components/ui/Table.vue'
+import Dialog from '@components/ui/Dialog.vue'
+import Pagination from '@components/ui/Pagination.vue'
+
+const products = ref([5])
+const paginationMeta = ref({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    per_page: 5,
+    from: 0,
+    to: 0,
+})
+const filters = reactive({ category: '', min_margin: '' })
+const showAddModal = ref(false)
+const showPriceModal = ref(false)
+const editingProduct = ref(null)
+const perPage = ref(10)
+
+const newProduct = reactive({
+    name: '', category: '', subcategory: '',
+    price_china_cny: 0, price_indonesia_idr: 0,
+    shipping_cost_idr: 0, tax_estimate_idr: 0, weight_kg: 0,
+})
+
+const priceUpdate = reactive({
+    price_china_cny: null,
+    price_indonesia_idr: null,
+    note: '',
+})
+
+const formatNumber = (num) => {
+    if (!num && num !== 0) return '0'
+    return new Intl.NumberFormat('id-ID').format(num)
+}
+
+const getMarginVariant = (margin) => {
+    if (margin > 40) return 'success'
+    if (margin > 20) return 'warning'
+    return 'destructive'
+}
+
+async function loadProducts(page = 1) {
+    try {
+        const params = { 
+            page,
+            per_page: perPage.value,
+        }
+        if (filters.category) params.category = filters.category
+        if (filters.min_margin) params.min_margin = filters.min_margin
+        
+        const res = await productApi.getAll(params)
+        
+        products.value = res.data || []
+        paginationMeta.value = {
+            current_page: res.current_page || 1,
+            last_page: res.last_page || 1,
+            total: res.total || 0,
+            per_page: res.per_page || 10,
+            from: res.from || 0,
+            to: res.to || 0,
+        }
+    } catch (e) {
+        console.error('Error loading products:', e)
+        alert('Gagal memuat produk: ' + (e.response?.data?.message || e.message))
+    }
+}
+
+function handlePageChange(page) {
+    loadProducts(page)
+}
+
+function handlePerPageChange(newPerPage) {
+    console.log('Per page changed to:', newPerPage) // ← cek ini
+    perPage.value = newPerPage
+    loadProducts(1)
+}
+
+function editPrice(product) {
+    editingProduct.value = product
+    priceUpdate.price_china_cny = product.price_china_cny
+    priceUpdate.price_indonesia_idr = product.price_indonesia_idr
+    priceUpdate.note = ''
+    showPriceModal.value = true
+}
+
+async function saveProduct() {
+    try {
+        await productApi.create({ ...newProduct })
+        showAddModal.value = false
+        Object.keys(newProduct).forEach(k => {
+            newProduct[k] = ['price_china_cny', 'price_indonesia_idr', 'shipping_cost_idr', 'tax_estimate_idr', 'weight_kg'].includes(k) ? 0 : ''
+        })
+        loadProducts(1)
+    } catch (e) {
+        alert('Gagal menyimpan: ' + (e.response?.data?.message || e.message))
+    }
+}
+
+async function savePriceUpdate() {
+    try {
+        await productApi.updatePrice(editingProduct.value.id, { ...priceUpdate })
+        showPriceModal.value = false
+        loadProducts(paginationMeta.value.current_page)
+    } catch (e) {
+        alert('Gagal update harga: ' + (e.response?.data?.message || e.message))
+    }
+}
+
+onMounted(() => loadProducts(1))
+</script>
+
 <template>
     <div class="space-y-4">
         <!-- Filters -->
         <Card>
-            <CardContent class="pt-6 flex gap-4 flex-wrap">
-                <Input 
-                    v-model="filters.category" 
-                    placeholder="Filter kategori..."
-                    class="w-48"
-                />
-                <Input 
-                    v-model.number="filters.min_margin" 
-                    type="number"
-                    placeholder="Min margin %"
-                    class="w-32"
-                />
-                <Button @click="loadProducts">Filter</Button>
+            <CardContent class="pt-6 flex gap-4 flex-wrap items-end">
+                <div>
+                    <label class="text-sm font-medium mb-1 block">Kategori</label>
+                    <Input 
+                        v-model="filters.category" 
+                        placeholder="Filter kategori..."
+                        class="w-48"
+                    />
+                </div>
+                <div>
+                    <label class="text-sm font-medium mb-1 block">Min Margin (%)</label>
+                    <Input 
+                        v-model.number="filters.min_margin" 
+                        type="number"
+                        placeholder="Min margin %"
+                        class="w-32"
+                    />
+                </div>
+                <Button @click="loadProducts(1)">Filter</Button>
                 <Button variant="secondary" @click="showAddModal = true">+ Tambah Produk</Button>
             </CardContent>
         </Card>
@@ -65,26 +191,21 @@
                             </Button>
                         </td>
                     </tr>
+                    <tr v-if="products.length === 0">
+                        <td colspan="8" class="p-8 text-center text-muted-foreground">
+                            Tidak ada data produk
+                        </td>
+                    </tr>
                 </tbody>
             </Table>
             
-            <!-- Pagination -->
-            <div class="flex items-center justify-between px-6 py-4 border-t">
-                <span class="text-sm text-muted-foreground">
-                    Total {{ pagination.total }} produk
-                </span>
-                <div class="flex gap-1">
-                    <Button
-                        v-for="page in pagination.last_page"
-                        :key="page"
-                        :variant="pagination.current_page === page ? 'default' : 'outline'"
-                        size="sm"
-                        @click="goToPage(page)"
-                    >
-                        {{ page }}
-                    </Button>
-                </div>
-            </div>
+            <!-- Reusable Pagination -->
+            <Pagination 
+                :meta="paginationMeta"
+                :max-visible="5"
+                @page-change="handlePageChange"
+                @per-page-change="handlePerPageChange"
+            />
         </Card>
 
         <!-- Add Modal -->
@@ -164,94 +285,3 @@
         </Dialog>
     </div>
 </template>
-
-<script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { productApi } from '@api/client'
-import Card from '@components/ui/Card.vue'
-import CardContent from '@components/ui/CardContent.vue'
-import Button from '@components/ui/Button.vue'
-import Input from '@components/ui/Input.vue'
-import Badge from '@components/ui/Badge.vue'
-import Table from '@components/ui/Table.vue'
-import Dialog from '@components/ui/Dialog.vue'
-
-const products = ref([])
-const pagination = ref({ current_page: 1, last_page: 1, total: 0 })
-const filters = reactive({ category: '', min_margin: '' })
-const showAddModal = ref(false)
-const showPriceModal = ref(false)
-const editingProduct = ref(null)
-
-const newProduct = reactive({
-    name: '', category: '', subcategory: '',
-    price_china_cny: 0, price_indonesia_idr: 0,
-    shipping_cost_idr: 0, tax_estimate_idr: 0, weight_kg: 0,
-})
-
-const priceUpdate = reactive({
-    price_china_cny: null,
-    price_indonesia_idr: null,
-    note: '',
-})
-
-const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num)
-
-const getMarginVariant = (margin) => {
-    if (margin > 40) return 'success'
-    if (margin > 20) return 'warning'
-    return 'destructive'
-}
-
-async function loadProducts(page = 1) {
-    try {
-        const params = { page, ...filters }
-        const res = await productApi.getAll(params)
-        products.value = res.data || []
-        pagination.value = {
-            current_page: res.current_page,
-            last_page: res.last_page,
-            total: res.total,
-        }
-    } catch (e) {
-        alert('Gagal memuat produk: ' + e.message)
-    }
-}
-
-function goToPage(page) {
-    loadProducts(page)
-}
-
-function editPrice(product) {
-    editingProduct.value = product
-    priceUpdate.price_china_cny = product.price_china_cny
-    priceUpdate.price_indonesia_idr = product.price_indonesia_idr
-    priceUpdate.note = ''
-    showPriceModal.value = true
-}
-
-async function saveProduct() {
-    try {
-        await productApi.create({ ...newProduct })
-        showAddModal.value = false
-        Object.keys(newProduct).forEach(k => {
-            newProduct[k] = ['price_china_cny', 'price_indonesia_idr', 'shipping_cost_idr', 'tax_estimate_idr', 'weight_kg'].includes(k) ? 0 : ''
-        })
-        loadProducts()
-    } catch (e) {
-        alert('Gagal menyimpan: ' + e.message)
-    }
-}
-
-async function savePriceUpdate() {
-    try {
-        await productApi.updatePrice(editingProduct.value.id, { ...priceUpdate })
-        showPriceModal.value = false
-        loadProducts(pagination.value.current_page)
-    } catch (e) {
-        alert('Gagal update harga: ' + e.message)
-    }
-}
-
-onMounted(() => loadProducts())
-</script>

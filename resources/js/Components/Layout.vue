@@ -1,4 +1,33 @@
 <!-- resources/js/components/Layout.vue -->
+<script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { LayoutDashboard, Package, Calculator } from 'lucide-vue-next'
+import { cn } from '@lib/utils'
+
+const route = useRoute()
+
+const navigation = [
+    { name: 'Dashboard', to: '/', icon: LayoutDashboard },
+    { name: 'Produk', to: '/products', icon: Package },
+    { name: 'SPK', to: '/spk', icon: Calculator },
+]
+
+const isActive = (path) => {
+    if (path === '/') return route.path === '/'
+    return route.path.startsWith(path)
+}
+
+const pageTitle = computed(() => {
+    const titles = {
+        'dashboard': 'Dashboard',
+        'products': 'Daftar Produk',
+        'product-detail': 'Detail Produk',
+        'spk': 'Perhitungan SPK',
+    }
+    return titles[route.name] || 'SPK Marketplace'
+})
+</script>
 <template>
     <div class="min-h-screen bg-background">
         <!-- Sidebar -->
@@ -35,33 +64,3 @@
         </div>
     </div>
 </template>
-
-<script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { LayoutDashboard, Package, Calculator } from 'lucide-vue-next'
-import { cn } from '@lib/utils'
-
-const route = useRoute()
-
-const navigation = [
-    { name: 'Dashboard', to: '/', icon: LayoutDashboard },
-    { name: 'Produk', to: '/products', icon: Package },
-    { name: 'SPK', to: '/spk', icon: Calculator },
-]
-
-const isActive = (path) => {
-    if (path === '/') return route.path === '/'
-    return route.path.startsWith(path)
-}
-
-const pageTitle = computed(() => {
-    const titles = {
-        'dashboard': 'Dashboard',
-        'products': 'Daftar Produk',
-        'product-detail': 'Detail Produk',
-        'spk': 'Perhitungan SPK',
-    }
-    return titles[route.name] || 'SPK Marketplace'
-})
-</script>
