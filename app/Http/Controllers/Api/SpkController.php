@@ -1,4 +1,3 @@
-// app/Http/Controllers/Api/SpkController.php
 <?php
 
 namespace App\Http\Controllers\Api;
@@ -9,9 +8,10 @@ use App\Services\SAWService;
 use App\Services\WPService;
 use Illuminate\Http\Request;
 
-class SpkController extends Controller {
-    
-    public function calculate(Request $request) {
+class SpkController extends Controller
+{
+    public function calculate(Request $request)
+    {
         $validated = $request->validate([
             'method' => 'required|in:saw,wp,both',
             'category' => 'nullable|string',
@@ -20,7 +20,8 @@ class SpkController extends Controller {
         ]);
 
         $query = Product::with('marketplaceData');
-        if ($validated['category'] ?? false) {
+        
+        if (!empty($validated['category'])) {
             $query->where('category', $validated['category']);
         }
 
@@ -29,13 +30,15 @@ class SpkController extends Controller {
         $response = [];
 
         if (in_array($validated['method'], ['saw', 'both'])) {
-            $results = (new SAWService())->calculate($products, $validated['weights'] ?? null);
-            $response['saw'] = array_slice($results, 0, $limit);
+            $sawService = new SAWService();
+            $sawResults = $sawService->calculate($products, $validated['weights'] ?? null);
+            $response['saw'] = array_slice($sawResults, 0, $limit);
         }
 
         if (in_array($validated['method'], ['wp', 'both'])) {
-            $results = (new WPService())->calculate($products, $validated['weights'] ?? null);
-            $response['wp'] = array_slice($results, 0, $limit);
+            $wpService = new WPService();
+            $wpResults = $wpService->calculate($products, $validated['weights'] ?? null);
+            $response['wp'] = array_slice($wpResults, 0, $limit);
         }
 
         return response()->json([
@@ -48,7 +51,8 @@ class SpkController extends Controller {
         ]);
     }
 
-    public function criteria() {
+    public function criteria()
+    {
         return response()->json([
             'criteria' => [
                 ['key' => 'margin_percent', 'label' => 'Margin Keuntungan (%)', 'type' => 'benefit', 'default_weight' => 0.25],
