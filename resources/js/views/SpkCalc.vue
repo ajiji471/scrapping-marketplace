@@ -11,7 +11,7 @@ import Button from '@components/ui/button/Button.vue'
 import Badge from '@components/ui/Badge.vue'
 import Select from '@components/ui/Select.vue'
 import Slider from '@components/ui/Slider.vue'
-import Table from '@components/ui/Table.vue'
+import DataTable from '@components/ui/DataTable.vue'
 
 const method = ref('saw')
 const categoryFilter = ref('')
@@ -25,11 +25,60 @@ const totalWeight = computed(() =>
     Object.values(weights).reduce((a, b) => a + (b || 0), 0)
 )
 
+const sawColumns = [
+    { 
+        key: 'rank', 
+        label: 'Rank', 
+        width: 'w-16',
+        align: 'center'
+    },
+    { key: 'product_name', label: 'Produk' },
+    { 
+        key: 'score', 
+        label: 'Score',
+        formatter: (val) => val.toFixed(4)
+    },
+    { 
+        key: 'margin_percent', 
+        label: 'Margin',
+        formatter: (val) => `${val?.toFixed(1) || 0}%`
+    },
+    { 
+        key: 'sold_count', 
+        label: 'Terjual',
+        formatter: (val) => Math.round(val || 0).toLocaleString('id-ID')
+    },
+    { 
+        key: 'rating', 
+        label: 'Rating',
+        formatter: (val) => val?.toFixed(2) || 0
+    },
+]
+
+const wpColumns = [
+    { 
+        key: 'rank', 
+        label: 'Rank', 
+        width: 'w-16',
+        align: 'center'
+    },
+    { key: 'product_name', label: 'Produk' },
+    { 
+        key: 'score', 
+        label: 'Score',
+        formatter: (val) => val.toFixed(6)
+    },
+    { 
+        key: 'margin_percent', 
+        label: 'Margin',
+        formatter: (val) => `${val?.toFixed(1) || 0}%`
+    },
+]
+
 async function loadCriteria() {
     try {
         const res = await spkApi.getCriteria()
         criteria.value = res.criteria || []
-        // Reset weights
         Object.keys(weights).forEach(k => delete weights[k])
         res.criteria.forEach(c => {
             weights[c.key] = c.default_weight
@@ -55,7 +104,7 @@ async function calculate() {
     }
 
     isLoading.value = true
-    results.value = { saw: null, wp: null } // Reset hasil sebelumnya
+    results.value = { saw: null, wp: null }
 
     try {
         const payload = {
@@ -65,16 +114,26 @@ async function calculate() {
         if (categoryFilter.value) payload.category = categoryFilter.value
         
         const res = await spkApi.calculate(payload)
+        const responseData = res.data || res
         
-        // PERBAIKAN: response structure dari backend
-        // Backend return: { meta: {...}, data: { saw: [...], wp: [...] } }
-        const responseData = res.data || res // handle kalau axios sudah unwrap data
+        console.log('SPK Response:', responseData)
         
-        console.log('SPK Response:', responseData) // Debug
+        if (responseData.saw) {
+            results.value.saw = responseData.saw.map(item => ({
+                ...item,
+                product_name: item.product?.name || 'Produk #' + item.product_id,
+                margin_percent: item.details?.margin_percent,
+                sold_count: item.details?.sold_count,
+                rating: item.details?.rating,
+            }))
+        }
         
-        results.value = {
-            saw: responseData.saw || null,
-            wp: responseData.wp || null,
+        if (responseData.wp) {
+            results.value.wp = responseData.wp.map(item => ({
+                ...item,
+                product_name: item.product?.name || 'Produk #' + item.product_id,
+                margin_percent: item.details?.margin_percent,
+            }))
         }
     } catch (e) {
         console.error('SPK Calculation error:', e)
@@ -88,6 +147,16 @@ function resetWeights() {
     criteria.value.forEach(c => {
         weights[c.key] = c.default_weight
     })
+}
+
+function getRankClass(rank) {
+    return cn(
+        'inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold',
+        rank === 1 ? 'bg-yellow-100 text-yellow-700' :
+        rank === 2 ? 'bg-gray-200 text-gray-700' :
+        rank === 3 ? 'bg-orange-100 text-orange-700' :
+        'bg-muted text-muted-foreground'
+    )
 }
 
 onMounted(() => {
@@ -156,13 +225,6 @@ onMounted(() => {
             </CardContent>
         </Card>
 
-        <!-- No Results -->
-        <Card v-else-if="results.saw && results.saw.length === 0">
-            <CardContent class="py-12 text-center">
-                <p class="text-muted-foreground">Tidak ada data untuk dihitung</p>
-            </CardContent>
-        </Card>
-
         <!-- SAW Results -->
         <Card v-if="results.saw && results.saw.length > 0">
             <CardHeader class="flex flex-row items-center justify-between">
@@ -170,43 +232,25 @@ onMounted(() => {
                 <Badge variant="secondary">{{ results.saw.length }} produk</Badge>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <thead class="border-b bg-muted/50">
-                        <tr>
-                            <th class="h-12 px-4 text-left font-medium w-16">Rank</th>
-                            <th class="h-12 px-4 text-left font-medium">Produk</th>
-                            <th class="h-12 px-4 text-left font-medium">Score</th>
-                            <th class="h-12 px-4 text-left font-medium">Margin</th>
-                            <th class="h-12 px-4 text-left font-medium">Terjual</th>
-                            <th class="h-12 px-4 text-left font-medium">Rating</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="item in results.saw" :key="item.product_id" class="border-b hover:bg-muted/50">
-                            <td class="p-4">
-                                <span :class="cn(
-                                    'inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold',
-                                    item.rank === 1 ? 'bg-yellow-100 text-yellow-700' :
-                                    item.rank === 2 ? 'bg-gray-200 text-gray-700' :
-                                    item.rank === 3 ? 'bg-orange-100 text-orange-700' :
-                                    'bg-muted text-muted-foreground'
-                                )">
-                                    {{ item.rank }}
-                                </span>
-                            </td>
-                            <td class="p-4 font-medium">{{ item.product?.name || 'Produk #' + item.product_id }}</td>
-                            <td class="p-4 font-mono text-primary">{{ item.score.toFixed(4) }}</td>
-                            <td class="p-4">{{ item.details?.margin_percent?.toFixed(1) || 0 }}%</td>
-                            <td class="p-4">{{ Math.round(item.details?.sold_count || 0).toLocaleString('id-ID') }}</td>
-                            <td class="p-4">
-                                <div class="flex items-center gap-1">
-                                    <span>{{ item.details?.rating?.toFixed(2) || 0 }}</span>
-                                    <span class="text-yellow-500">★</span>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </Table>
+                <DataTable
+                    :columns="sawColumns"
+                    :data="results.saw"
+                    :internal-pagination="true"
+                    :internal-per-page="5"
+                    empty-text="Tidak ada hasil SAW"
+                >
+                    <template #cell-rank="{ value }">
+                        <span :class="getRankClass(value)">
+                            {{ value }}
+                        </span>
+                    </template>
+                    <template #cell-rating="{ value }">
+                        <div class="flex items-center gap-1">
+                            <span>{{ value }}</span>
+                            <span class="text-yellow-500">★</span>
+                        </div>
+                    </template>
+                </DataTable>
             </CardContent>
         </Card>
 
@@ -217,34 +261,19 @@ onMounted(() => {
                 <Badge variant="secondary">{{ results.wp.length }} produk</Badge>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <thead class="border-b bg-muted/50">
-                        <tr>
-                            <th class="h-12 px-4 text-left font-medium w-16">Rank</th>
-                            <th class="h-12 px-4 text-left font-medium">Produk</th>
-                            <th class="h-12 px-4 text-left font-medium">Score</th>
-                            <th class="h-12 px-4 text-left font-medium">Margin</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="item in results.wp" :key="item.product_id" class="border-b hover:bg-muted/50">
-                            <td class="p-4">
-                                <span :class="cn(
-                                    'inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold',
-                                    item.rank === 1 ? 'bg-yellow-100 text-yellow-700' :
-                                    item.rank === 2 ? 'bg-gray-200 text-gray-700' :
-                                    item.rank === 3 ? 'bg-orange-100 text-orange-700' :
-                                    'bg-muted text-muted-foreground'
-                                )">
-                                    {{ item.rank }}
-                                </span>
-                            </td>
-                            <td class="p-4 font-medium">{{ item.product?.name || 'Produk #' + item.product_id }}</td>
-                            <td class="p-4 font-mono text-primary">{{ item.score.toFixed(6) }}</td>
-                            <td class="p-4">{{ item.details?.margin_percent?.toFixed(1) || 0 }}%</td>
-                        </tr>
-                    </tbody>
-                </Table>
+                <DataTable
+                    :columns="wpColumns"
+                    :data="results.wp"
+                    :internal-pagination="true"
+                    :internal-per-page="5"
+                    empty-text="Tidak ada hasil WP"
+                >
+                    <template #cell-rank="{ value }">
+                        <span :class="getRankClass(value)">
+                            {{ value }}
+                        </span>
+                    </template>
+                </DataTable>
             </CardContent>
         </Card>
     </div>

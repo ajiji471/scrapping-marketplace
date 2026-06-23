@@ -1,17 +1,19 @@
 <!-- resources/js/views/Products.vue -->
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { productApi } from '@api/client'
 import Card from '@components/ui/card/Card.vue'
 import CardContent from '@components/ui/card/CardContent.vue'
 import Button from '@components/ui/button/Button.vue'
 import Input from '@components/ui/Input.vue'
 import Badge from '@components/ui/Badge.vue'
-import Table from '@components/ui/Table.vue'
 import Dialog from '@components/ui/Dialog.vue'
-import Pagination from '@components/ui/Pagination.vue'
+import DataTable from '@components/ui/DataTable.vue'
 
-const products = ref([5])
+const router = useRouter()
+
+const products = ref([])
 const paginationMeta = ref({
     current_page: 1,
     last_page: 1,
@@ -24,7 +26,8 @@ const filters = reactive({ category: '', min_margin: '' })
 const showAddModal = ref(false)
 const showPriceModal = ref(false)
 const editingProduct = ref(null)
-const perPage = ref(10)
+const perPage = ref(5)
+const loading = ref(false)
 
 const newProduct = reactive({
     name: '', category: '', subcategory: '',
@@ -38,6 +41,41 @@ const priceUpdate = reactive({
     note: '',
 })
 
+const columns = [
+    { key: 'name', label: 'Nama', width: 'w-48' },
+    { key: 'category', label: 'Kategori' },
+    { 
+        key: 'price_china_cny', 
+        label: 'Harga China',
+        formatter: (val) => `¥${val}`
+    },
+    { 
+        key: 'price_indonesia_idr', 
+        label: 'Harga Indo',
+        formatter: (val) => `Rp${new Intl.NumberFormat('id-ID').format(val)}`
+    },
+    { 
+        key: 'total_cost_from_china', 
+        label: 'Total Cost',
+        formatter: (val) => `Rp${new Intl.NumberFormat('id-ID').format(val)}`
+    },
+    { 
+        key: 'margin_percent', 
+        label: 'Margin',
+        formatter: (val) => `${val}%`
+    },
+    { 
+        key: 'marketplace_summary', 
+        label: 'Terjual',
+        formatter: (val) => val?.total_sold || 0
+    },
+    { 
+        key: 'actions', 
+        label: 'Aksi',
+        align: 'center'
+    },
+]
+
 const formatNumber = (num) => {
     if (!num && num !== 0) return '0'
     return new Intl.NumberFormat('id-ID').format(num)
@@ -50,6 +88,7 @@ const getMarginVariant = (margin) => {
 }
 
 async function loadProducts(page = 1) {
+    loading.value = true
     try {
         const params = { 
             page,
@@ -65,13 +104,15 @@ async function loadProducts(page = 1) {
             current_page: res.current_page || 1,
             last_page: res.last_page || 1,
             total: res.total || 0,
-            per_page: res.per_page || 10,
+            per_page: res.per_page || perPage.value,
             from: res.from || 0,
             to: res.to || 0,
         }
     } catch (e) {
         console.error('Error loading products:', e)
         alert('Gagal memuat produk: ' + (e.response?.data?.message || e.message))
+    } finally {
+        loading.value = false
     }
 }
 
@@ -80,9 +121,12 @@ function handlePageChange(page) {
 }
 
 function handlePerPageChange(newPerPage) {
-    console.log('Per page changed to:', newPerPage) // ← cek ini
     perPage.value = newPerPage
     loadProducts(1)
+}
+
+function handleRowClick(item) {
+    router.push(`/products/${item.id}`)
 }
 
 function editPrice(product) {
@@ -146,66 +190,39 @@ onMounted(() => loadProducts(1))
             </CardContent>
         </Card>
 
-        <!-- Table -->
+        <!-- DataTable -->
         <Card>
-            <Table>
-                <thead class="border-b bg-muted/50">
-                    <tr>
-                        <th class="h-12 px-4 text-left font-medium">Nama</th>
-                        <th class="h-12 px-4 text-left font-medium">Kategori</th>
-                        <th class="h-12 px-4 text-left font-medium">Harga China</th>
-                        <th class="h-12 px-4 text-left font-medium">Harga Indo</th>
-                        <th class="h-12 px-4 text-left font-medium">Total Cost</th>
-                        <th class="h-12 px-4 text-left font-medium">Margin</th>
-                        <th class="h-12 px-4 text-left font-medium">Terjual</th>
-                        <th class="h-12 px-4 text-left font-medium">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr 
-                        v-for="p in products" 
-                        :key="p.id" 
-                        class="border-b hover:bg-muted/50 cursor-pointer"
-                        @click="$router.push(`/products/${p.id}`)"
-                    >
-                        <td class="p-4 font-medium">{{ p.name }}</td>
-                        <td class="p-4">
-                            <Badge variant="secondary">{{ p.category }}</Badge>
-                        </td>
-                        <td class="p-4">¥{{ p.price_china_cny }}</td>
-                        <td class="p-4">Rp{{ formatNumber(p.price_indonesia_idr) }}</td>
-                        <td class="p-4">Rp{{ formatNumber(p.total_cost_from_china) }}</td>
-                        <td class="p-4">
-                            <Badge :variant="getMarginVariant(p.margin_percent)">
-                                {{ p.margin_percent }}%
-                            </Badge>
-                        </td>
-                        <td class="p-4">{{ p.marketplace_summary?.total_sold || 0 }}</td>
-                        <td class="p-4">
-                            <Button 
-                                variant="ghost" 
-                                size="sm"
-                                @click.stop="editPrice(p)"
-                            >
-                                Update Harga
-                            </Button>
-                        </td>
-                    </tr>
-                    <tr v-if="products.length === 0">
-                        <td colspan="8" class="p-8 text-center text-muted-foreground">
-                            Tidak ada data produk
-                        </td>
-                    </tr>
-                </tbody>
-            </Table>
-            
-            <!-- Reusable Pagination -->
-            <Pagination 
+            <DataTable
+                :columns="columns"
+                :data="products"
                 :meta="paginationMeta"
-                :max-visible="5"
+                :loading="loading"
+                :show-pagination="true"
+                empty-text="Tidak ada data produk"
                 @page-change="handlePageChange"
                 @per-page-change="handlePerPageChange"
-            />
+                @row-click="handleRowClick"
+            >
+                <template #cell-category="{ value }">
+                    <Badge variant="secondary">{{ value }}</Badge>
+                </template>
+
+                <template #cell-margin_percent="{ value }">
+                    <Badge :variant="getMarginVariant(value)">
+                        {{ value }}%
+                    </Badge>
+                </template>
+
+                <template #cell-actions="{ item }">
+                    <Button 
+                        variant="ghost" 
+                        size="sm"
+                        @click.stop="editPrice(item)"
+                    >
+                        Update Harga
+                    </Button>
+                </template>
+            </DataTable>
         </Card>
 
         <!-- Add Modal -->
