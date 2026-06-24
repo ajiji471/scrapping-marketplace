@@ -1,4 +1,30 @@
 <!-- resources/js/views/ProductDetail.vue -->
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { productApi } from '@api/client'
+import Card from '@components/ui/card/Card.vue'
+import CardHeader from '@components/ui/card/CardHeader.vue'
+import CardTitle from '@components/ui/card/CardTitle.vue'
+import CardContent from '@components/ui/card/CardContent.vue'
+import Button from '@components/ui/button/Button.vue'
+import Badge from '@components/ui/Badge.vue'
+import Table from '@components/ui/Table.vue'
+
+const route = useRoute()
+const product = ref(null)
+
+const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num)
+const formatDate = (date) => new Date(date).toLocaleDateString('id-ID')
+
+onMounted(async () => {
+    try {
+        product.value = await productApi.getById(route.params.id)
+    } catch (e) {
+        console.error(e)
+    }
+})
+</script>
 <template>
     <div v-if="product" class="space-y-6">
         <div class="flex items-center gap-4">
@@ -94,30 +120,3 @@
         </Card>
     </div>
 </template>
-
-<script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { productApi } from '@api/client'
-import Card from '@components/ui/Card.vue'
-import CardHeader from '@components/ui/CardHeader.vue'
-import CardTitle from '@components/ui/CardTitle.vue'
-import CardContent from '@components/ui/CardContent.vue'
-import Button from '@components/ui/Button.vue'
-import Badge from '@components/ui/Badge.vue'
-import Table from '@components/ui/Table.vue'
-
-const route = useRoute()
-const product = ref(null)
-
-const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num)
-const formatDate = (date) => new Date(date).toLocaleDateString('id-ID')
-
-onMounted(async () => {
-    try {
-        product.value = await productApi.getById(route.params.id)
-    } catch (e) {
-        console.error(e)
-    }
-})
-</script>
