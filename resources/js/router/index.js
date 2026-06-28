@@ -1,11 +1,10 @@
-// resources/js/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
-import Layout from '@components/Layout.vue'
+import DashboardLayout from '../Layouts/DashboardLayout.vue'
 
 const routes = [
     {
         path: '/',
-        component: Layout,
+        component: DashboardLayout,
         children: [
             {
                 path: '',

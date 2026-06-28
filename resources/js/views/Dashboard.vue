@@ -1,4 +1,43 @@
-<!-- resources/js/views/Dashboard.vue -->
+<script setup>
+import { ref, onMounted } from 'vue'
+import { productApi } from '@api/client'
+import Card from '@components/ui/card/Card.vue'
+import CardHeader from '@components/ui/card/CardHeader.vue'
+import CardTitle from '@components/ui/card/CardTitle.vue'
+import CardContent from '@components/ui/card/CardContent.vue'
+import Badge from '@components/ui/Badge.vue'
+import Table from '@components/ui/Table.vue'
+
+const stats = ref([
+    { label: 'Total Produk', value: '0' },
+    { label: 'Rata-rata Margin', value: '0%' },
+    { label: 'Produk >30% Margin', value: '0' },
+    { label: 'Kategori', value: '0' },
+])
+
+const topProducts = ref([])
+
+const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num)
+
+onMounted(async () => {
+    try {
+        const res = await productApi.getAll({ per_page: 100 })
+        const products = res.data || []
+        
+        stats.value[0].value = products.length
+        stats.value[1].value = (products.reduce((a, b) => a + (b.margin_percent || 0), 0) / products.length).toFixed(1) + '%'
+        stats.value[2].value = products.filter(p => p.margin_percent > 30).length
+        stats.value[3].value = [...new Set(products.map(p => p.category))].filter(Boolean).length
+        
+        topProducts.value = [...products]
+            .sort((a, b) => b.margin_percent - a.margin_percent)
+            .slice(0, 5)
+    } catch (e) {
+        console.error(e)
+    }
+})
+</script>
+
 <template>
     <div class="space-y-6">
         <!-- Stats -->
@@ -47,43 +86,3 @@
         </Card>
     </div>
 </template>
-
-<script setup>
-import { ref, onMounted } from 'vue'
-import { productApi } from '@api/client'
-import Card from '@components/ui/card/Card.vue'
-import CardHeader from '@components/ui/card/CardHeader.vue'
-import CardTitle from '@components/ui/card/CardTitle.vue'
-import CardContent from '@components/ui/card/CardContent.vue'
-import Badge from '@components/ui/Badge.vue'
-import Table from '@components/ui/Table.vue'
-
-const stats = ref([
-    { label: 'Total Produk', value: '0' },
-    { label: 'Rata-rata Margin', value: '0%' },
-    { label: 'Produk >30% Margin', value: '0' },
-    { label: 'Kategori', value: '0' },
-])
-
-const topProducts = ref([])
-
-const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num)
-
-onMounted(async () => {
-    try {
-        const res = await productApi.getAll({ per_page: 100 })
-        const products = res.data || []
-        
-        stats.value[0].value = products.length
-        stats.value[1].value = (products.reduce((a, b) => a + (b.margin_percent || 0), 0) / products.length).toFixed(1) + '%'
-        stats.value[2].value = products.filter(p => p.margin_percent > 30).length
-        stats.value[3].value = [...new Set(products.map(p => p.category))].filter(Boolean).length
-        
-        topProducts.value = [...products]
-            .sort((a, b) => b.margin_percent - a.margin_percent)
-            .slice(0, 5)
-    } catch (e) {
-        console.error(e)
-    }
-})
-</script>
