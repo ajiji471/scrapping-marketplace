@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import DashboardLayout from '../Layouts/DashboardLayout.vue'
+import Login from '../Pages/Auth/Login.vue'
 
 const routes = [
     {
@@ -9,24 +10,29 @@ const routes = [
             {
                 path: '',
                 name: 'dashboard',
-                component: () => import('@views/Dashboard.vue')
+                component: () => import('../views/Dashboard.vue')  // path relatif
             },
             {
                 path: 'products',
                 name: 'products',
-                component: () => import('@views/Products.vue')
+                component: () => import('../views/Products.vue')
             },
             {
                 path: 'products/:id',
                 name: 'product-detail',
-                component: () => import('@views/ProductDetail.vue')
+                component: () => import('../views/ProductDetail.vue')
             },
             {
                 path: 'spk',
                 name: 'spk',
-                component: () => import('@views/SpkCalc.vue')
+                component: () => import('../views/SpkCalc.vue')
             },
         ]
+    },
+    {
+        path: '/login',
+        name: 'login',
+        component: Login,
     }
 ]
 
