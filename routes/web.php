@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Welcome page (publik)
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -14,17 +15,29 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+    Route::get('/products', function () {
+        return Inertia::render('Products');
+    })->name('products');
+
+    Route::get('/products/{id}', function ($id) {
+        return Inertia::render('ProductDetail', ['id' => $id]);
+    })->name('product-detail');
+
+    Route::get('/spk', function () {
+        return Inertia::render('SpkCalc');
+    })->name('spk');
+
+    // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
-Route::get('/{any?}', function () {
-    return view('app');
-})->where('any', '.*');
 
+// Auth routes (login, register, logout, dll)
 require __DIR__.'/auth.php';

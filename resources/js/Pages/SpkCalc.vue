@@ -1,4 +1,4 @@
-<!-- resources/js/views/SpkCalc.vue -->
+<!-- resources/js/Pages/SpkCalc.vue -->
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { spkApi, productApi } from '@api/client'

@@ -1,17 +1,15 @@
-<!-- resources/js/views/Products.vue -->
+<!-- resources/js/Pages/Products.vue -->
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { productApi } from '@api/client'
-import Card from '@components/ui/card/Card.vue'
-import CardContent from '@components/ui/card/CardContent.vue'
-import Button from '@components/ui/button/Button.vue'
-import Input from '@components/ui/Input.vue'
-import Badge from '@components/ui/Badge.vue'
-import Dialog from '@components/ui/Dialog.vue'
-import DataTable from '@components/ui/DataTable.vue'
-
-const router = useRouter()
+import { router } from '@inertiajs/vue3'
+import { productApi } from '@/api/client'
+import Card from '@/Components/ui/card/Card.vue'
+import CardContent from '@/Components/ui/card/CardContent.vue'
+import Button from '@/Components/ui/button/Button.vue'
+import Input from '@/Components/ui/Input.vue'
+import Badge from '@/Components/ui/Badge.vue'
+import Dialog from '@/Components/ui/Dialog.vue'
+import DataTable from '@/Components/ui/DataTable.vue'
 
 const products = ref([])
 const paginationMeta = ref({
@@ -126,7 +124,8 @@ function handlePerPageChange(newPerPage) {
 }
 
 function handleRowClick(item) {
-    router.push(`/products/${item.id}`)
+    // Inertia: gunakan router.visit() atau route()
+    router.visit(route('product-detail', { id: item.id }))
 }
 
 function editPrice(product) {

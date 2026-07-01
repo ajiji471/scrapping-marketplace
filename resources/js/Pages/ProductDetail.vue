@@ -1,17 +1,17 @@
-<!-- resources/js/views/ProductDetail.vue -->
+<!-- resources/js/Pages/ProductDetail.vue -->
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { productApi } from '@api/client'
-import Card from '@components/ui/card/Card.vue'
-import CardHeader from '@components/ui/card/CardHeader.vue'
-import CardTitle from '@components/ui/card/CardTitle.vue'
-import CardContent from '@components/ui/card/CardContent.vue'
-import Button from '@components/ui/button/Button.vue'
-import Badge from '@components/ui/Badge.vue'
-import Table from '@components/ui/Table.vue'
+import { usePage } from '@inertiajs/vue3'
+import { productApi } from '@/api/client'
+import Card from '@/Components/ui/card/Card.vue'
+import CardHeader from '@/Components/ui/card/CardHeader.vue'
+import CardTitle from '@/Components/ui/card/CardTitle.vue'
+import CardContent from '@/Components/ui/card/CardContent.vue'
+import Button from '@/Components/ui/button/Button.vue'
+import Badge from '@/Components/ui/Badge.vue'
+import Table from '@/Components/ui/Table.vue'
 
-const route = useRoute()
+const page = usePage()
 const product = ref(null)
 
 const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num)
@@ -19,16 +19,18 @@ const formatDate = (date) => new Date(date).toLocaleDateString('id-ID')
 
 onMounted(async () => {
     try {
-        product.value = await productApi.getById(route.params.id)
+        // Ambil ID dari props Inertia (dikirim dari controller)
+        product.value = await productApi.getById(page.props.id)
     } catch (e) {
         console.error(e)
     }
 })
 </script>
+
 <template>
     <div v-if="product" class="space-y-6">
         <div class="flex items-center gap-4">
-            <Button variant="outline" size="sm" @click="$router.back()">← Kembali</Button>
+            <Button variant="outline" size="sm" @click="history.back()">← Kembali</Button>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
